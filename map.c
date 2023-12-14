@@ -6,6 +6,7 @@
 
 #include "osm.h"
 
+Image *ctext;
 client c = {
 	.server = "tile.openstreetmap.org",
 	.zoom = 10,
@@ -148,6 +149,13 @@ void redraw(Image *screen){
 		drawrow(screen, drawpos, row, width, tilesz, zoom);
 	}
 
+	Font *f = display->defaultfont;
+	Point fsz = stringsize(f, "Map data from OpenStreetMap");
+	Point corig = { screen->r.max.x - fsz.x, screen->r.max.y - (fsz.y*2)};
+	string(screen, corig, ctext, ZP, f, "Map data from OpenStreetMap");
+	fsz = stringsize(f, "openstreetmap.org/copyright");
+	corig = (Point ){ screen->r.max.x - fsz.x, screen->r.max.y - (fsz.y)};
+	string(screen, corig, ctext, ZP, f, "openstreetmap.org/copyright");
 	flushimage(display, 1);
 }
 
@@ -163,6 +171,7 @@ void main(void) {
 	if (initdraw(0, 0, "OSM Map") == 0) {
 		sysfatal("initdraw");
 	}
+	ctext = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1, DBlack);
 	einit(Emouse|Ekeyboard);
 	redraw(screen);
 	for(;;) {
