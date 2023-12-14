@@ -43,8 +43,8 @@ latlong tile2world(tilepos tp, int zoom) {
 	// lat_deg = lat_rad * 180.0 / π
 
 	latlong ll;
-	double dx = (double )tp.x + 0.5;
-	double dy = (double )tp.y + 0.5;
+	double dx = (double )tp.x;
+	double dy = (double )tp.y;
 	long tilesPerGlobe = 1 << zoom;
 	double n = (double)tilesPerGlobe;
 	ll.lng = dx / n * 360.0 - 180.0;

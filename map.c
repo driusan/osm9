@@ -19,6 +19,7 @@ void cachetile(long x, long y, int zoom);
 
 Image* getimage(tilepos tp, int zoom) {
 	cachetile(tp.x, tp.y, zoom);
+	Dir *d;
 	char *filename = smprint("%s/lib/osm/cache/%d/%ld/%ld.png", getenv("home"), zoom, tp.x, tp.y);
 	int fd[2];
 	if (pipe(fd) < 0) {
@@ -29,16 +30,25 @@ Image* getimage(tilepos tp, int zoom) {
 		dup(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
+		d = dirstat(filename);
+		assert(d != nil);
+		free(d);
 		char *cmd = smprint("png -c %s", filename);
-	//	fprint(2, "cmd: %s\n", cmd);
+		// fprint(2, "cmd: %s\n", cmd);
 		execl("/bin/rc", "rc", "-c", cmd, nil);
+		exits("");
+	} else if (pid < 0) {
+		sysfatal("fork");
+	} else {
+		close(fd[1]);
+		Image* i = readimage(display, fd[0], 0);
+		close(fd[0]);
+		assert(waitpid() > 0);
+		assert(i);
+		return i;
 	}
-	close(fd[1]);
-	Image* i = readimage(display, fd[0], 0);
-	close(fd[0]);
-	assert(waitpid() > 0);
-	assert(i);
-	return i;
+	sysfatal("unreachable");
+	return nil;
 }
 
 void cachetile(long x, long y, int zoom){
@@ -47,20 +57,22 @@ void cachetile(long x, long y, int zoom){
 	int pid;
 	d = dirstat(filename);
 	if (d == nil) {
-		fprint(2, "No %s\n", filename);
-		pid = rfork(RFPROC|RFNAMEG);
+		//fprint(2, "No %s\n", filename);
+		pid = rfork(RFPROC|RFFDG);
 		if (pid == 0) {
 			int wfd = open("/mnt/osm/ctl", OWRITE);
 			fprint(wfd, "zoom %d\n", zoom);
 			fprint(wfd, "x %ld\n", x);
 			fprint(wfd, "y %ld\n", y);
 			close(wfd);
-			fprint(2, "osm/get\n");
+		//	fprint(2, "osm/get\n");
 			execl("/bin/rc", "rc" "-c", "osm/get", nil);
+		} else if (pid < 0) {
+			sysfatal("fork");
+		} else {
+			assert(waitpid() > 0);
+
 		}
-	//	fprint(2, "waiting\n");
-		assert(waitpid() > 0);
-	//	fprint(2, "waited\n");
 	} else {
 		// fprint(2, "Found %s\n", filename);
 		free(d);
@@ -69,7 +81,7 @@ void cachetile(long x, long y, int zoom){
 	
 }
 
-void drawrow(Image *screen, Rectangle drawpos, tilepos center, int screenwidth, int tilesz) {
+void drawrow(Image *screen, Rectangle drawpos, tilepos center, int screenwidth, int tilesz, int zoom) {
 	tilepos drawtile;
 	Image *src;
 
@@ -89,7 +101,7 @@ void drawrow(Image *screen, Rectangle drawpos, tilepos center, int screenwidth, 
 		drawpos.max.x = origin.max.x - (tilesz*x);
 		drawtile.x = center.x - x;
 
-		src = getimage(drawtile, c.zoom);
+		src = getimage(drawtile, zoom);
 		draw(screen, drawpos, src, nil, src->r.min);
 		freeimage(src);
 		// right
@@ -97,13 +109,14 @@ void drawrow(Image *screen, Rectangle drawpos, tilepos center, int screenwidth, 
 		drawpos.min.x = origin.min.x + (tilesz*x);
 		drawpos.max.x = origin.max.x + (tilesz*x);
 		drawtile.x = center.x + x;
-		src = getimage(drawtile, c.zoom);
+		src = getimage(drawtile, zoom);
 		draw(screen, drawpos, src, nil, src->r.min);
 		freeimage(src);
 	}
 }
 void redraw(Image *screen){
 	Rectangle centertile = screen->r;
+	int zoom = c.zoom;
 	tilepos center = clienttile(&c);
 	int width = screen->r.max.x - screen->r.min.x;
 	int tilesz = 256;
@@ -123,7 +136,7 @@ void redraw(Image *screen){
 		drawpos.min.y = centertile.min.y - (i*tilesz);
 		drawpos.max.y = centertile.max.y - (i*tilesz);
 
-		drawrow(screen, drawpos, row, width, tilesz);
+		drawrow(screen, drawpos, row, width, tilesz, zoom);
 
 		// down
 		row = center;
@@ -132,7 +145,7 @@ void redraw(Image *screen){
 		drawpos.min.y = centertile.min.y + (i*tilesz);
 		drawpos.max.y = centertile.max.y + (i*tilesz);
 
-		drawrow(screen, drawpos, row, width, tilesz);
+		drawrow(screen, drawpos, row, width, tilesz, zoom);
 	}
 
 	flushimage(display, 1);

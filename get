@@ -2,21 +2,25 @@
 
 if (test -f /mnt/osm/ctl) {}
 if not {
-	if (test -f /srv/osmfs) {
-		mount /srv/osmfs /mnt/osm
-	}
-	if not {
-		osm/fs
-	}
+	echo 'no osmfs' >[2=1]
+	exit 'no osmfs'
 }
 
+zoom=`{cat /mnt/osm/zoom}
+x=`{cat /mnt/osm/x}
+y=`{cat /mnt/osm/y}
+url=`{cat /mnt/osm/url}
+
 cachedir=$home/lib/osm/cache
+cachefiledir=$cachedir^/^$zoom^/^$x
+cachefile=$cachefiledir/^$y^.png
 mkdir -p $cachedir
 
-cachefiledir=$cachedir/^`{cat /mnt/osm/zoom}^/^`{cat /mnt/osm/x}
+
+
 mkdir -p $cachefiledir
 
-cachefile=$cachefiledir/^`{cat /mnt/osm/y}^.png
+
 if (test -d $cachefiledir) {}
 if not {
 	mkdir -p $cachefiledir
@@ -26,4 +30,4 @@ if (test -f $cachefile) {}
 if not {
 	hget -r 'User-Agent: OSMFS' `{cat /mnt/osm/url} > $cachefile
 }
-echo $cachefile
+# echo $cachefile
