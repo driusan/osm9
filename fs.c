@@ -250,7 +250,7 @@ void usage(void) {
 
 void main(int argc, char *argv[]) {
 	fs.tree = alloctree(nil, nil, DMDIR|777, nil);
-	char *srvname = "osmfs";
+	char *srvname = nil;
 	int mountflags = 0;
 	char *mtpt = "/mnt/osm";
 
@@ -265,6 +265,9 @@ void main(int argc, char *argv[]) {
 	}ARGEND;
 	
 	poptree();
+	if (mountflags == 0) {
+		mountflags = MREPL;
+	}
 	postmountsrv(&fs, srvname, mtpt, mountflags);
 	exits("");
 }
