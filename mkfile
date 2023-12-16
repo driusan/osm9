@@ -1,9 +1,9 @@
 </$objtype/mkfile
 
 BIN=/$objtype/bin/osm
-TARG=fs map
+TARG=fs map osrmfs
 RC=get
-OFILES=gettile.$O
+OFILES=gettile.$O readfile.$O
 
 </sys/src/cmd/mkmany
 
