@@ -52,3 +52,21 @@ latlong tile2world(tilepos tp, int zoom) {
 	ll.lat = lat_rad * 180.0 / PI;
 	return ll;
 }
+
+latlong tilecenter2world(tilepos tp, int zoom) {
+	// ported from https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+	// n = 2 ^ zoom
+	// lon_deg = xtile / n * 360.0 - 180.0
+	// lat_rad = arctan(sinh(π * (1 - 2 * ytile / n)))
+	// lat_deg = lat_rad * 180.0 / π
+
+	latlong ll;
+	double dx = (double )tp.x + 0.5;
+	double dy = (double )tp.y + 0.5;
+	long tilesPerGlobe = 1 << zoom;
+	double n = (double)tilesPerGlobe;
+	ll.lng = dx / n * 360.0 - 180.0;
+	double lat_rad = atan(sinh(PI * (1.0 - (2.0 * dy) / n)));
+	ll.lat = lat_rad * 180.0 / PI;
+	return ll;
+}

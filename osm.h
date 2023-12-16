@@ -18,3 +18,5 @@ typedef struct {
 tilepos clienttile(client *c);
 
 latlong tile2world(tilepos tp, int zoom);
+
+latlong tilecenter2world(tilepos tp, int zoom);

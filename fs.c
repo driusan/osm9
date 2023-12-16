@@ -189,7 +189,7 @@ void fswrite(Req *r) {
 			return;
 		}
 		tp.x = x;
-		world = tile2world(tp, c.zoom);
+		world = tilecenter2world(tp, c.zoom);
 		c.world.lng = world.lng;
 		r->ofcall.count = 0;
 		respond(r, nil);
@@ -199,12 +199,14 @@ void fswrite(Req *r) {
 		long y = strtol(&r->ifcall.data[2], nil, 10);
 		if (y <= 0) {
 			r->ofcall.count = 0;
-			respond(r, "bad x tile");
+			respond(r, "bad y tile");
 			return;
 		}
 		tp.y = y;
-		world = tile2world(tp, c.zoom);
+		world = tilecenter2world(tp, c.zoom);
 		c.world.lat = world.lat;
+		tp = clienttile(&c);
+		assert(tp.y == y);
 		r->ofcall.count = 0;
 		respond(r, nil);
 		return;
