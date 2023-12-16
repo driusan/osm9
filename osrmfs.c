@@ -6,6 +6,7 @@
 #include <json.h>
 #include <stdio.h>
 #include "readfile.h"
+#include "proxyfd.h"
 
 #include "osm.h"
 
@@ -129,21 +130,6 @@ void nearest(Req *r) {
 typedef struct {
 	char *s;
 } ResponseCache;
-
-void proxyfd(Req *r) {
-	int fd = (int ) *((int *)r->fid->aux);
-	int n = pread(fd, r->ofcall.data, r->ifcall.count, r->ifcall.offset);
-	r->ofcall.count = n;
-	if (n == 0) {
-		close(fd);
-	}
-	if (n >= 0) {
-		respond(r, nil);
-	} else {
-		respond(r, "read error");
-	}	
-
-}
 
 void route(Req *r) {
 	if (r->fid->aux != nil) {
