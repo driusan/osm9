@@ -88,6 +88,17 @@ JSON* webget(char *url) {
 	}
 	return json;
 }
+void latlongreq(Req *r, latlong *dst){
+	double lat, lng;
+	r->ofcall.count = 0;
+	if (sscanf(r->ifcall.data, "%lf %lf", &lat, &lng) != 2){
+		respond(r, "bad latlong");
+		return;
+	}
+	dst->lat = lat;
+	dst->lng = lng;
+	respond(r, nil);
+}
 void nearest(Req *r) {
 	char url[1024];
 	sprint(url, "https://%s/nearest/%s/%s/%f,%f\n", c.server, c.version, c.profile, c.src.lng,c.src.lat);
@@ -293,13 +304,26 @@ void fsread(Req *r) {
 	respond(r, "not implemented");
 }
 
+void ctl(Req *r);
+
 void fswrite(Req *r) {
 	FileAux *f = r->fid->file->aux;
-
-	if (f->file != CTL) {
+	switch(f->file){
+	case CTL:
+		ctl(r);
+		return;
+	case SRC:
+		latlongreq(r, &c.src);
+		return;
+	case DST:
+		latlongreq(r, &c.dst);
+		return;
+	default:
 		respond(r, "write prohibited");
 		return;
 	}
+}
+void ctl(Req *r){
 	if (strncmp(r->ifcall.data, "server ", 7) == 0) {
 		c.server = strdup(&r->ifcall.data[7]);
 		char *ch = c.server;
@@ -345,11 +369,11 @@ void poptree(void) {
 
 	faux = malloc(sizeof(FileAux));
 	faux->file = SRC;
-	createfile(fs.tree->root, "src", nil, 0444, faux);
+	createfile(fs.tree->root, "src", nil, 0666, faux);
 
 	faux = malloc(sizeof(FileAux));
 	faux->file = DST;
-	createfile(fs.tree->root, "dst", nil, 0444, faux);
+	createfile(fs.tree->root, "dst", nil, 0666, faux);
 
 	faux = malloc(sizeof(FileAux));
 	faux->file = NEAREST;
