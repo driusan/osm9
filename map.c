@@ -3,6 +3,7 @@
 #include <draw.h>
 #include <keyboard.h>
 #include <event.h>
+#include <stdio.h>
 
 #include "osm.h"
 
@@ -273,15 +274,26 @@ void changezoom(int newzoom){
 	// memset(imagecache, ntiles*ntiles, sizeof(Image*));
 	c.zoom = newzoom;
 }
+
+void init(void){
+	char buf[512];
+	int fd;
+	if ((fd = open("/mnt/osm/latlong", OREAD)) < 0){
+		sysfatal("osm/fs not running");
+	}
+	if (read(fd, buf, 512) < 0) {
+		sysfatal("read latlong error");
+	}
+	if (sscanf(buf, "%lf %lf", &c.world.lat, &c.world.lng) <= 0){
+		sysfatal("bad latlong");
+	};
+}
 void main(void) {
 	Event e;
 	ulong evt;
 	Mouse lastmouse;
-	Dir *d = dirstat("/mnt/osm/latlong");
-	if (d == nil) {
-		sysfatal("osm/fs not running");
-	}
-	free(d);
+
+	init();
 	changezoom(c.zoom);
 
 	if (initdraw(0, 0, "OSM Map") == 0) {
