@@ -287,6 +287,17 @@ void init(void){
 	if (sscanf(buf, "%lf %lf", &c.world.lat, &c.world.lng) <= 0){
 		sysfatal("bad latlong");
 	};
+	close(fd);
+	if ((fd = open("/mnt/osm/zoom", OREAD)) < 0) {
+		sysfatal("no zoom");	
+	}
+	if (read(fd, buf, 512) < 0) {
+		sysfatal("read zoom error");
+	}
+	if (sscanf(buf, "%d", &c.zoom) <= 0){
+		sysfatal("bad zoom");
+	}
+	close(fd); 
 }
 void main(void) {
 	Event e;

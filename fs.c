@@ -3,6 +3,8 @@
 #include <fcall.h>
 #include <thread.h>
 #include <9p.h>
+#include <stdio.h>
+
 #include "osm.h"
 
 typedef enum {
@@ -126,14 +128,38 @@ void fsread(Req *r) {
 	respond(r, "not implemented");
 }
 
+void ctl(Req *r);
+
+void latlongreq(Req *r){
+	double lat, lng;
+	r->ofcall.count = 0;
+	if (sscanf(r->ifcall.data, "%lf %lf", &lat, &lng) != 2){
+		respond(r, "bad latlong");
+		return;
+	}
+	c.world.lat = lat;
+	c.world.lng = lng;
+	respond(r, nil);
+}
 void fswrite(Req *r) {
 	FileAux *f = r->fid->file->aux;
-	tilepos tp;
-	latlong world;
-	if (f->file != CTL) {
+
+	switch(f->file){
+	case CTL:
+		ctl(r);
+		return;
+	case LATLONG:
+		latlongreq(r);
+		return;
+	default:
 		respond(r, "write prohibited");
 		return;
 	}
+}
+
+void ctl(Req *r){
+	tilepos tp;
+	latlong world;
 	if (strncmp(r->ifcall.data, "zoom ", 5) == 0) {
 		int z = strtol(&r->ifcall.data[5], nil, 10);
 		if (z == 0) {
@@ -153,7 +179,6 @@ void fswrite(Req *r) {
 				*ch = 0;
 				break;
 			}
-			ch++;
 		}
 		r->ofcall.count = 0;
 		respond(r, nil);
@@ -226,7 +251,7 @@ void poptree(void) {
 
 	faux = malloc(sizeof(FileAux));
 	faux->file = LATLONG;
-	createfile(fs.tree->root, "latlong", nil, 0444, faux);
+	createfile(fs.tree->root, "latlong", nil, 0666, faux);
 
 	faux = malloc(sizeof(FileAux));
 	faux->file = XPOS;
