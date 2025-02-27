@@ -7,6 +7,9 @@ typedef struct {
 typedef struct {
 	long x;
 	long y;
+
+	double subx;
+	double suby;
 } tilepos;
 
 typedef struct {

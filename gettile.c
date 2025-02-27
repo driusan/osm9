@@ -10,6 +10,7 @@ double d2r(double deg) {
 
 tilepos clienttile(client *c) {
 	tilepos tp;
+	double x, y;
 	if (c == nil) { 
 		tp.x = -1;
 		tp.y = -1;
@@ -23,12 +24,16 @@ tilepos clienttile(client *c) {
 	// ytile = n * (1 - (log(tan(lat_rad) + sec(lat_rad)) / π)) / 2
 	// n =  tilesPerGlobe
 
-	tp.x = (int )((double )tilesPerGlobe * (c->world.lng + 180.0) / 360.0);
+	x = ((double )tilesPerGlobe * (c->world.lng + 180.0) / 360.0);
+	tp.x = (int ) x;
+	tp.subx = x - (double )tp.x;
 	if (tp.x < 0) {
 		tp.x += tilesPerGlobe;
 	}
 
-	tp.y = (int )floor(tilesPerGlobe * (1.0 - (log(tan(latr) + sec(latr)) / PI)) / 2.0);
+	y = tilesPerGlobe * (1.0 - (log(tan(latr) + sec(latr)) / PI)) / 2.0;
+	tp.y = (int )floor(y);
+	tp.suby = y - (double )tp.y;
 	if (tp.y < 0) {
 		tp.y += tilesPerGlobe;
 	}

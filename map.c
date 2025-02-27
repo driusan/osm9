@@ -23,8 +23,8 @@ client c = {
 	.server = "tile.openstreetmap.org",
 	.zoom = 10,
 	.world = {
-		.lat = 45.5273219,
-		.lng = -73.5703556,
+		.lat = 0,
+		.lng = 0,
 	}
 };
 
@@ -82,12 +82,18 @@ Image* getimage(tilepos tp, int zoom) {
 		close(fd[0]);
 		assert(waitpid() > 0);
 		assert(i != nil);
+
+/*
+string(i, i->r.min, ctext, ZP, display->defaultfont, "Min");
+string(i, Pt(i->r.max.x-25, i->r.max.y-16), ctext, ZP, display->defaultfont, "Max");
+string(i, Pt((i->r.max.x - i->r.min.x) / 2, (i->r.max.y - i->r.min.y) / 2), ctext, ZP, display->defaultfont, "Mid");
+*/
 		imagecache[(tp.x*ntiles + tp.y) % (MAXMEMCACHE*MAXMEMCACHE)].pos = tp;	
 		imagecache[(tp.x*ntiles + tp.y) % (MAXMEMCACHE*MAXMEMCACHE)].i = i;
 		return i;
 	}
-	sysfatal("unreachable");
-	return nil;
+	// sysfatal("unreachable");
+	//return nil;
 }
 
 void cachetile(long x, long y, int zoom){
@@ -105,7 +111,6 @@ void cachetile(long x, long y, int zoom){
 			fprint(wfd, "x %ld\n", x);
 			fprint(wfd, "y %ld\n", y);
 			close(wfd);
-		//	fprint(2, "osm/get\n");
 			execl("/bin/rc", "rc" "-c", "osm/get", nil);
 		} else if (pid < 0) {
 			sysfatal("fork");
@@ -124,6 +129,14 @@ void cachetile(long x, long y, int zoom){
 	
 }
 
+static void
+updatefspos(latlong pos)
+{
+	int wfd = open("/mnt/osm/ctl", OWRITE);
+	fprint(wfd, "lat %f\n", pos.lat);
+	fprint(wfd, "long %f\n", pos.lng);
+	close(wfd);
+}
 void drawcopyright(Image *screen){
 	Font *f = display->defaultfont;
 	Point corig;
@@ -185,25 +198,20 @@ void drawrow(Image *screen, Rectangle drawpos, tilepos center, int screenwidth, 
 }
 void redraw(Image *screen){
 	Rectangle centertile = screen->r;
-
 	int zoom = c.zoom;
 	tilepos center = clienttile(&c);
-	latlong origintilepos = tile2world(center, zoom);
 	int width = screen->r.max.x - screen->r.min.x;
 	int tilesz = 256;
 	int height = screen->r.max.y - screen->r.min.y;
 	//	int tileszy = 256; // src->r.max.x - src->r.min.x;
 	int ntiles = width / tilesz;	
 
-	latlong diff = {c.world.lat - origintilepos.lat, c.world.lng-origintilepos.lng};
-	double ppd = 1.0 / degperpixel(zoom);
-	// FIXME: Handle fractional tiles if lat/long isn't top left of tile
-	centertile.min.x += (width / 2) - (tilesz / 2);
-	centertile.min.y += (height / 2) - (tilesz / 2);
+	centertile.min.x += (int )(width / 2) ;
+	centertile.min.y += (int )(height / 2);
 
-	centertile.min.x -= (diff.lng*ppd) / 2.0;
-	centertile.min.y += (diff.lat*ppd) / 2.0;
-
+	centertile.min.x -= (int)(center.subx*tilesz);
+	centertile.min.y -= (int)(center.suby*tilesz);
+		
 	centertile.max.x = centertile.min.x + tilesz;
 	centertile.max.y = centertile.min.y + tilesz;
 
@@ -228,18 +236,17 @@ void redraw(Image *screen){
 		drawrow(screen, drawpos, row, width, tilesz, zoom);
 	}
 
-
-	/*
-	corig = centertile.min;
-	string(screen, corig, ctext, ZP, f, "+");
-
-	string(screen, centertile.min, ctext, ZP, f, "+");
-	string(screen, centertile.max, ctext, ZP, f, "+");
-	*/
-
+	/* draw a + over the place that we're showing, which is the center of the screen */
+	string(screen, Pt(
+		((screen->r.max.x - screen->r.min.x) / 2) + screen->r.min.x,
+		((screen->r.max.y - screen->r.min.y) / 2) + screen->r.min.y
+		),
+		ctext, ZP, display->defaultfont, "+");
 	drawcopyright(screen);
 	drawcoords(screen);
-//	flushimage(display, 1);
+	/* restore the fs's position if cacheimage changed it */
+	updatefspos(c.world);
+
 }
 
 void eresized(int new) {
@@ -270,7 +277,7 @@ void changezoom(int newzoom){
 	if (ntiles > MAXMEMCACHE) {
 		ntiles = MAXMEMCACHE;
 	}
-	imagecache =calloc(ntiles*ntiles, sizeof(MemImageCache));
+	imagecache = calloc(ntiles*ntiles, sizeof(MemImageCache));
 	// memset(imagecache, ntiles*ntiles, sizeof(Image*));
 	c.zoom = newzoom;
 }
@@ -331,6 +338,7 @@ void main(void) {
 				c.world.lng -= degperpixel(c.zoom) * dx;
 				c.world.lat += degperpixel(c.zoom) * dy;
 				redraw(screen);
+				updatefspos(c.world);
 			}
 			lastmouse = e.mouse;
 			break;
@@ -354,18 +362,22 @@ void main(void) {
 			case Kdown:
 				c.world.lat -= degperpixel(c.zoom) * 100;
 				redraw(screen);
+				updatefspos(c.world);
 				break;
 			case Kup:
 				c.world.lat += degperpixel(c.zoom) * 100;
 				redraw(screen);
+				updatefspos(c.world);
 				break;
 			case Kleft: 
 				c.world.lng -= degperpixel(c.zoom) * 100;
 				redraw(screen);
+				updatefspos(c.world);
 				break;
 			case Kright: 
 				c.world.lng += degperpixel(c.zoom) * 100;
 				redraw(screen);
+				updatefspos(c.world);
 				break;
 			}
 			break;
